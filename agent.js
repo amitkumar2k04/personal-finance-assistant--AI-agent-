@@ -1,9 +1,10 @@
 import readline from 'node:readline/promises';    // This package helps us to (reads/take input data) from termials 
-
+import db_connection from './db_connection.js';
 import Groq from 'groq-sdk';
 
-const expenseDB = [];
-const incomeDB = [];
+
+// const expenseDB = [];
+// const incomeDB = [];
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -128,13 +129,13 @@ async function callAgent() {
 
                 let result = '';
                 if (functionName === 'getTotalExpense') {
-                    result = getTotalExpense(JSON.parse(functionArgs));
+                    result = await getTotalExpense(JSON.parse(functionArgs));
                 } else if (functionName === 'addExpense') {
-                    result = addExpense(JSON.parse(functionArgs));
+                    result = await addExpense(JSON.parse(functionArgs));
                 } else if (functionName === 'addIncome') {
-                    result = addIncome(JSON.parse(functionArgs));
+                    result = await addIncome(JSON.parse(functionArgs));
                 } else if (functionName === 'getMoneyBalance') {
-                    result = getMoneyBalance(JSON.parse(functionArgs));
+                    result = await getMoneyBalance(JSON.parse(functionArgs));
                 }
 
                 messages.push({
@@ -160,30 +161,75 @@ callAgent();
  * Get total expense
  */
 
-function getTotalExpense({ from, to }) {
+async function getTotalExpense({ from, to }) {
     // console.log('Calling getTotalExpense tool');
+    try {
+        const [results] = await db_connection.execute(
+            'SELECT SUM(amount) AS totalExpense FROM Expenses WHERE date BETWEEN ? AND ?',
+            [from, to]
+        );
+        return `${results[0].totalExpense} INR`;
+    } catch (err) {
+        console.error('Error fetching total expense:', err);
+        throw err;
+    }
 
     // In reality -> we call db here...
-    const expense = expenseDB.reduce((acc, item) => {
-        return acc + item.amount;
-    }, 0);
-    return `${expense} INR`;
+    // const expense = expenseDB.reduce((acc, item) => {
+    //     return acc + item.amount;
+    // }, 0);
+    // return `${expense} INR`;
 }
 
-function addExpense({ name, amount }) {
+async function addExpense({ name, amount }) {
+    try {
+        await db_connection.execute(
+            'INSERT INTO Expenses (name, amount) VALUES (?, ?)',
+            [name, amount]
+        );
+        return 'Expense added to the database.';
+    } catch (err) {
+        console.error('Error adding expense:', err);
+        throw err; 
+    }
+
     // console.log(`Adding ${amount} to expense db for ${name}`);
-    expenseDB.push({ name, amount });
-    return 'Added to the database.';
+    // expenseDB.push({ name, amount });
+    // return 'Added to the database.';
 }
 
-function addIncome({ name, amount }) {
-    incomeDB.push({ name, amount });
-    return 'Added to the income database.';
+async function addIncome({ name, amount }) {
+    try {
+        await db_connection.execute(
+            'INSERT INTO Incomes (name, amount) VALUES (?, ?)',
+            [name, amount]
+        );
+        return 'Income added to the database.';
+    } catch (err) {
+        console.error('Error adding income:', err);
+        throw err;
+    }
+
+    // incomeDB.push({ name, amount });
+    // return 'Added to the income database.';
 }
 
-function getMoneyBalance() {
-    const totalIncome = incomeDB.reduce((acc, item) => acc + item.amount, 0);
-    const totalExpense = expenseDB.reduce((acc, item) => acc + item.amount, 0);
+async function getMoneyBalance() {
+     try {
+        const [incomeResults] = await db_connection.execute('SELECT SUM(amount) AS totalIncome FROM Incomes');
+        const [expenseResults] = await db_connection.execute('SELECT SUM(amount) AS totalExpense FROM Expenses');
+        
+        const totalIncome = incomeResults[0].totalIncome || 0;
+        const totalExpense = expenseResults[0].totalExpense || 0;
+        
+        return `${totalIncome - totalExpense} INR`;
+    } catch (err) {
+        console.error('Error calculating balance:', err);
+        throw err;
+    }
 
-    return `${totalIncome - totalExpense} INR`;
+    // const totalIncome = incomeDB.reduce((acc, item) => acc + item.amount, 0);
+    // const totalExpense = expenseDB.reduce((acc, item) => acc + item.amount, 0);
+
+    // return `${totalIncome - totalExpense} INR`;
 }
