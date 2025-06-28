@@ -1,4 +1,4 @@
-# first-agent
+# personal finance assistant (AI agent)
 
 To install dependencies:
 
@@ -9,7 +9,7 @@ bun install
 To run:
 
 ```bash
-bun run index.js
+bun run agent.js
 ```
 
 This project was created using `bun init` in bun v1.0.25. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
