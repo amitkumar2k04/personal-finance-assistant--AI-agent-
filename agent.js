@@ -1,168 +1,151 @@
-import readline from 'node:readline/promises';    // This package helps us to (reads/take input data) from termials 
+import readline from 'node:readline/promises';
 import db_connection from './db_connection.js';
 import Groq from 'groq-sdk';
-
-
-// const expenseDB = [];
-// const incomeDB = [];
+import dotenv from 'dotenv';
+dotenv.config();
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-async function callAgent() {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-
-    const messages = [
+/**
+ * Main function to process user query from frontend
+ */
+export async function callAgent(question) {
+    let messages = [
         {
             role: 'system',
-            content: `You are Josh, a personal finance assistant. Your task is to assist user with their expenses, balances and financial planning.
-            You have access to following tools:
+            content: `You are Josh, a personal finance assistant. Your task is to assist the user with their expenses, balances, and financial planning.
+            You have access to the following tools:
             1. getTotalExpense({from, to}): string // Get total expense for a time period.
             2. addExpense({name, amount}): string // Add new expense to the expense database.
             3. addIncome({name, amount}): string // Add new income to income database.
             3. getMoneyBalance(): string // Get remaining money balance from database.
-
-            current datetime: ${new Date().toUTCString()}`,
+            `,
         },
     ];
 
-    // this outer loop is for user prompt loop
-    while (true) {
-        const question = await rl.question('User: ');
+  
+    messages.push({
+        role: 'user',
+        content: question,
+    });
 
-        if (question === 'bye') {
-            break;
-        }
-
-        messages.push({
-            role: 'user',
-            content: question,
+    try {
+        // Create a request to the Groq API / agent calling 
+        const completion = await groq.chat.completions.create({
+            messages: messages,
+            model: 'llama-3.3-70b-versatile',
+            tools: [
+                {
+                    type: 'function',
+                    function: {
+                        name: 'getTotalExpense',
+                        description: 'Get total expense from date to date.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                from: {
+                                    type: 'string',
+                                    description: 'From date to get the expense.',
+                                },
+                                to: {
+                                    type: 'string',
+                                    description: 'To date to get the expense.',
+                                },
+                            },
+                        },
+                    },
+                },
+                {
+                    type: 'function',
+                    function: {
+                        name: 'addExpense',
+                        description: 'Add new expense entry to the expense database.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                name: {
+                                    type: 'string',
+                                    description: 'Name of the expense. e.g., Bought an iphone',
+                                },
+                                amount: {
+                                    type: 'string',
+                                    description: 'Amount of the expense.',
+                                },
+                            },
+                        },
+                    },
+                },
+                {
+                    type: 'function',
+                    function: {
+                        name: 'addIncome',
+                        description: 'Add new income entry to income database',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                name: {
+                                    type: 'string',
+                                    description: 'Name of the income. e.g., Got salary',
+                                },
+                                amount: {
+                                    type: 'string',
+                                    description: 'Amount of the income.',
+                                },
+                            },
+                        },
+                    },
+                },
+                {
+                    type: 'function',
+                    function: {
+                        name: 'getMoneyBalance',
+                        description: 'Get remaining money balance from database.',
+                    },
+                },
+            ],
         });
 
-        // this inner loop is for agent calling 
-        while (true) {
-            const completion = await groq.chat.completions.create({
-                messages: messages,
-                model: 'llama-3.3-70b-versatile',
-                tools: [
-                    {
-                        type: 'function',
-                        function: {
-                            name: 'getTotalExpense',
-                            description: 'Get total expense from date to date.',
-                            parameters: {
-                                type: 'object',
-                                properties: {
-                                    from: {
-                                        type: 'string',
-                                        description: 'From date to get the expense.',
-                                    },
-                                    to: {
-                                        type: 'string',
-                                        description: 'To date to get the expense.',
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    {
-                        type: 'function',
-                        function: {
-                            name: 'addExpense',
-                            description: 'Add new expense entry to the expense database.',
-                            parameters: {
-                                type: 'object',
-                                properties: {
-                                    name: {
-                                        type: 'string',
-                                        description: 'Name of the expense. e.g., Bought an iphone',
-                                    },
-                                    amount: {
-                                        type: 'string',
-                                        description: 'Amount of the expense.',
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    {
-                        type: 'function',
-                        function: {
-                            name: 'addIncome',
-                            description: 'Add new income entry to income database',
-                            parameters: {
-                                type: 'object',
-                                properties: {
-                                    name: {
-                                        type: 'string',
-                                        description: 'Name of the income. e.g., Got salary',
-                                    },
-                                    amount: {
-                                        type: 'string',
-                                        description: 'Amount of the income.',
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    {
-                        type: 'function',
-                        function: {
-                            name: 'getMoneyBalance',
-                            description: 'Get remaining money balance from database.',
-                        },
-                    },
-                ],
-            });
+        messages.push(completion.choices[0].message);
 
-            // console.log(JSON.stringify(completion.choices[0], null, 2));
-            messages.push(completion.choices[0].message);
-
-            const toolCalls = completion.choices[0].message.tool_calls;
-            if (!toolCalls) {
-                console.log(`Assistant: ${completion.choices[0].message.content}`);
-                break;
-            }
-
-            for (const tool of toolCalls) {
-                const functionName = tool.function.name;
-                const functionArgs = tool.function.arguments;
-
-                let result = '';
-                if (functionName === 'getTotalExpense') {
-                    result = await getTotalExpense(JSON.parse(functionArgs));
-                } else if (functionName === 'addExpense') {
-                    result = await addExpense(JSON.parse(functionArgs));
-                } else if (functionName === 'addIncome') {
-                    result = await addIncome(JSON.parse(functionArgs));
-                } else if (functionName === 'getMoneyBalance') {
-                    result = await getMoneyBalance(JSON.parse(functionArgs));
-                }
-
-                messages.push({
-                    role: 'tool',
-                    content: result,
-                    tool_call_id: tool.id,
-                });
-                // console.log(JSON.stringify(completion2.choices[0], null, 2));
-            }
-
-            // console.log('===============');
-            // console.log('MESSAGES:', messages);
-            // console.log('===============');
-            // console.log('DB: ', expenseDB);
+        const toolCalls = completion.choices[0].message.tool_calls;
+        if (!toolCalls) {
+            return completion.choices[0].message.content;
         }
-    }
 
-    rl.close();
+        for (const tool of toolCalls) {
+            const functionName = tool.function.name;
+            const functionArgs = tool.function.arguments;
+
+            let result = '';
+            if (functionName === 'getTotalExpense') {
+                result = await getTotalExpense(JSON.parse(functionArgs)); // <-- Get total expenses
+            } else if (functionName === 'addExpense') {
+                result = await addExpense(JSON.parse(functionArgs)); // <-- Add new expense
+            } else if (functionName === 'addIncome') {
+                result = await addIncome(JSON.parse(functionArgs)); // <-- Add new income
+            } else if (functionName === 'getMoneyBalance') {
+                result = await getMoneyBalance(JSON.parse(functionArgs)); // <-- Get current balance
+            }
+
+            messages.push({
+                role: 'tool',
+                content: result,
+                tool_call_id: tool.id,
+            });
+        }
+
+        // Return the final response message to the frontend (based on the latest message)
+        return messages[messages.length - 1].content;  
+    } catch (err) {
+        console.error("Error encountered:", err);
+        return 'Sorry, I encountered an error while processing your request.';
+    }
 }
-callAgent();
 
 /**
- * Get total expense
+ * Get total expense for a given time period
  */
-
 async function getTotalExpense({ from, to }) {
-    // console.log('Calling getTotalExpense tool');
     try {
         const [results] = await db_connection.execute(
             'SELECT SUM(amount) AS totalExpense FROM Expenses WHERE date BETWEEN ? AND ?',
@@ -173,14 +156,11 @@ async function getTotalExpense({ from, to }) {
         console.error('Error fetching total expense:', err);
         throw err;
     }
-
-    // In reality -> we call db here...
-    // const expense = expenseDB.reduce((acc, item) => {
-    //     return acc + item.amount;
-    // }, 0);
-    // return `${expense} INR`;
 }
 
+/**
+ * Add new expense to the database
+ */
 async function addExpense({ name, amount }) {
     try {
         await db_connection.execute(
@@ -192,12 +172,11 @@ async function addExpense({ name, amount }) {
         console.error('Error adding expense:', err);
         throw err; 
     }
-
-    // console.log(`Adding ${amount} to expense db for ${name}`);
-    // expenseDB.push({ name, amount });
-    // return 'Added to the database.';
 }
 
+/**
+ * Add new income to the database
+ */
 async function addIncome({ name, amount }) {
     try {
         await db_connection.execute(
@@ -209,13 +188,13 @@ async function addIncome({ name, amount }) {
         console.error('Error adding income:', err);
         throw err;
     }
-
-    // incomeDB.push({ name, amount });
-    // return 'Added to the income database.';
 }
 
+/**
+ * Get the remaining money balance by calculating the total income and expenses
+ */
 async function getMoneyBalance() {
-     try {
+    try {
         const [incomeResults] = await db_connection.execute('SELECT SUM(amount) AS totalIncome FROM Incomes');
         const [expenseResults] = await db_connection.execute('SELECT SUM(amount) AS totalExpense FROM Expenses');
         
@@ -227,9 +206,4 @@ async function getMoneyBalance() {
         console.error('Error calculating balance:', err);
         throw err;
     }
-
-    // const totalIncome = incomeDB.reduce((acc, item) => acc + item.amount, 0);
-    // const totalExpense = expenseDB.reduce((acc, item) => acc + item.amount, 0);
-
-    // return `${totalIncome - totalExpense} INR`;
 }
