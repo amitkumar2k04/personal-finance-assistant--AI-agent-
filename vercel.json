@@ -9,7 +9,7 @@
  ],
  "routes": [
   {
-   "src": "/api/finance",
+   "src": "/(.*)",
    "dest": "/app.js"
   }
  ]
