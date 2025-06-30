@@ -20,7 +20,7 @@ const ChatBox = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:8080/api/finance', { question: userInput });
+      const response = await axios.post('/api/finance', { question: userInput });
       const botReply = response.data.reply;
       setChatHistory([...chatHistory, newMessage, { text: botReply, sender: 'ai' }]);
     } catch (error) {
