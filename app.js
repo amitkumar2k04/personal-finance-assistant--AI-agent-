@@ -6,6 +6,14 @@ import { callAgent } from './agent.js';
 const app = express();
 const port = process.env.PORT || 3000;
 
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' ? 'https://personal-finance-assistant-ai-agent.vercel.app/' : 'http://localhost:3000',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json()); // Parse JSON data from requests
