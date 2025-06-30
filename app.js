@@ -10,6 +10,10 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json()); // Parse JSON data from requests
 
+app.get('/', (req, res) => {
+  res.send('Server is running. Use POST /api/finance for queries');
+});
+
 app.post('/api/finance', async (req, res) => {
   const { question } = req.body; // get user ques
 
