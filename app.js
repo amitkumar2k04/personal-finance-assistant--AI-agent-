@@ -37,6 +37,6 @@ app.post('/api/finance', async (req, res) => {
 module.exports = app
 module.exports.handler = serverless(app)
 
-// app.listen(port, () => {
-//   console.log(`Server running on ${port}`);
-// });
+app.listen(port, () => {
+  console.log(`Server running on ${port}`);
+});
