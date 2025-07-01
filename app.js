@@ -6,17 +6,14 @@ import { callAgent } from './agent.js';
 const app = express();
 const port = process.env.PORT || 3000;
 
-const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' ? 'https://personal-finance-assistant-ai-agent.vercel.app/' : 'http://localhost:3000',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-};
-
-app.use(cors(corsOptions));
-
 // Middleware
 app.use(cors());
 app.use(bodyParser.json()); // Parse JSON data from requests
+
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? 'https://personal-finance-assistant-ai-agent.vercel.app' : 'http://localhost:5173',
+  credentials: true,
+}));
 
 app.get('/', (req, res) => {
   res.send('Server is running. Use POST /api/finance for queries');
@@ -37,5 +34,5 @@ app.post('/api/finance', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+  console.log(`Server running on ${port}`);
 });

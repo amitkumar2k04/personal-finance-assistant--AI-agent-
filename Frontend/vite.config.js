@@ -4,11 +4,18 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  server: {
+  // server: {
+  //   proxy: {
+  //     '/api/finance' : 'http://localhost:8080/',
+  //   }
+  // },
+
+    server: {
     proxy: {
-      '/api/finance' : 'http://localhost:8080/',
+      '/api/finance' : 'https://personal-finance-assistant-ai-agent-smoky.vercel.app',
     }
   },
+
   plugins: [
     react(),
     tailwindcss(),
