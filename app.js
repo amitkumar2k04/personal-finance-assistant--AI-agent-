@@ -2,16 +2,17 @@ import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import { callAgent } from './agent.js';
+const serverless = require('serverless-http')
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json()); // Parse JSON data from requests
+app.use(bodyParser.json());
 
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? 'https://personal-finance-assistant-ai-agent.vercel.app' : 'http://localhost:5173',
+  origin: 'http://localhost:5173',
   credentials: true,
 }));
 
@@ -33,6 +34,9 @@ app.post('/api/finance', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running on ${port}`);
-});
+module.exports = app
+module.exports.handler = serverless(app)
+
+// app.listen(port, () => {
+//   console.log(`Server running on ${port}`);
+// });
